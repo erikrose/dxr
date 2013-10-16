@@ -234,46 +234,18 @@ class ClangHtmlifier(object):
             self.add_jump_definition(menu, path, line)
             yield start, end, menu
 
-        # Hack to add links for #includes
-        # TODO This should be handled in the clang extension we don't know the
-        # include paths here, and we cannot resolve includes correctly.
-        pattern = re.compile('\#[\s]*include[\s]*[<"](\S+)[">]')
-        tokenizer = tokenizers.CppTokenizer(self.text)
-        for token in tokenizer.getTokens():
-            if token.token_type == tokenizer.PREPROCESSOR and 'include' in token.name:
-                match = pattern.match(token.name)
-                if match is None:
-                    continue
-                inc_name = match.group(1)
-                sql = "SELECT path FROM files WHERE path LIKE ?"
-                rows = self.conn.execute(sql, (inc_name,)).fetchall()
-
-                if rows is None or len(rows) == 0:
-                    basename = os.path.basename(inc_name)
-                    rows = self.conn.execute(sql, ("%%/%s" % (basename),)).fetchall()
-
-                if rows is not None and len(rows) == 1:
-                    path  = rows[0][0]
-                    start = token.start + match.start(1)
-                    end   = token.start + match.end(1)
-                    url   = self.tree.config.wwwroot + '/' + self.tree.name + '/source/' + path
-                    menu  = [{
-                        'text':   "Jump to file",
-                        'title':  "Jump to what is likely included there",
-                        'href':   url,
-                        'icon':   'jump'
-                    },]
-                    yield start, end, menu
-            else:
-                continue
-
-        # Test hack for declaration/definition jumps
-        #sql = """
-        #  SELECT extent_start, extent_end, defid
-        #    FROM decldef
-        #   WHERE file_id = ?
-        #"""
-        #
+        # Link all the #includes in this file to the files they reference.
+        for start, end, path in self.conn.execute(
+                'SELECT extent_start, extent_end, '
+                       '(SELECT path FROM files WHERE files.id = includes.target_id) '
+                'FROM includes '
+                'WHERE includes.file_id = ?', args).fetchall():
+            # Is a subselect faster than an inner join for some reason?
+            yield start, end, [{'text': 'Jump to file',
+                                'title': 'Jump to what is included here.',
+                                'href': self.tree.config.wwwroot + '/' +
+                                        self.tree.name + '/source/' + path,
+                                'icon': 'jump'}]
 
     def search(self, query):
         """ Auxiliary function for getting the search url for query """

@@ -145,6 +145,16 @@ public:
   virtual void Ifdef(SourceLocation loc, const Token &tok);
   virtual void Ifndef(SourceLocation loc, const Token &tok);
 #endif
+virtual void InclusionDirective(  // same in 3.2 and 3.3
+    SourceLocation hashLoc,
+    const Token &includeTok,
+    StringRef fileName,
+    bool isAngled,
+    CharSourceRange filenameRange,
+    const FileEntry *file,
+    StringRef searchPath,
+    StringRef relativePath,
+    const Module *imported);
 };
 
 class IndexConsumer : public ASTConsumer,
@@ -946,6 +956,34 @@ public:
   virtual void Ifndef(SourceLocation loc, const Token &tok, const MacroInfo *MI) {
     printMacroReference(tok, MI);
   }
+
+  virtual void InclusionDirective(
+      SourceLocation hashLoc,
+      const Token &includeTok,
+      StringRef fileName,
+      bool isAngled,
+      CharSourceRange filenameRange,
+      const FileEntry *file,
+      StringRef searchPath,
+      StringRef relativePath,
+      const Module *imported) {
+    PresumedLoc presumedHashLoc;
+    FileInfo *target;
+
+    if (!interestingLocation(hashLoc) ||
+        filenameRange.isInvalid() ||
+        (presumedHashLoc = sm.getPresumedLoc(hashLoc)).isInvalid() ||
+        // Don't record inclusions of files that are outside the source tree, like stdlibs:
+        !(target = getFileInfo(file->getName()))->interesting)
+      return;
+
+    beginRecord("include", hashLoc);
+    recordValue("source_path", getFileInfo(presumedHashLoc.getFilename())->realname);
+    printExtent(filenameRange.getBegin(), filenameRange.getEnd());
+    recordValue("target_path", target->realname);
+    *out << std::endl;
+  }
+
 };
 
 #if CLANG_AT_LEAST(3, 3)
@@ -987,6 +1025,18 @@ public:
     real->Ifndef(loc, tok, NULL);
   }
 #endif
+void PreprocThunk::InclusionDirective(  // Same in 3.2 and 3.3
+    SourceLocation hashLoc,
+    const Token &includeTok,
+    StringRef fileName,
+    bool isAngled,
+    CharSourceRange filenameRange,
+    const FileEntry *file,
+    StringRef searchPath,
+    StringRef relativePath,
+    const Module *imported) {
+  real->InclusionDirective(hashLoc, includeTok, fileName, isAngled, filenameRange, file, searchPath, relativePath, imported);
+}
 
 class DXRIndexAction : public PluginASTAction {
 protected:
