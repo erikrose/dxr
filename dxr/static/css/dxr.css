@@ -373,3 +373,34 @@ table.result_snippet tr {
         text-align: left;
     }
 }
+
+/* Switch Tree menu */
+#tree-menu {
+    background-color: #fff;
+    border: solid #777 1px;
+    border-radius: 3px;
+    float: right;
+    font-size: 10px;
+    margin-right: 10px;
+    padding: 3px 5px;
+    text-decoration: none;
+}
+#tree-menu:hover {
+    background-color: #eee;
+}
+.downer {
+    color: #666;
+    position: relative;
+    margin-left: 1px;
+    top: -1px;
+}
+#tree-menu-items {
+    background-color: #fff;
+    border: solid 1px #777;
+    display: none;
+    margin-top: -2px;
+    padding: 3px 5px;
+    position: absolute;
+    right: 10px;
+    width: 30%;
+}

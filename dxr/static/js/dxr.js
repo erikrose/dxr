@@ -100,6 +100,8 @@ $(function() {
 
     var searchForm = $('#basic_search'),
         queryField = $('#query'),
+        treeMenu = $('#tree-menu'),
+        isTreeMenuShowing = false,
         contentContainer = $('#content');
 
     /**
@@ -208,7 +210,7 @@ $(function() {
         }
     });
 
-    // Stop search as you type as soon as the field looses focus.
+    // Stop search as you type as soon as the field loses focus.
     queryField.on('blur', function() {
         stopQueryInputPoller();
     });
@@ -219,4 +221,30 @@ $(function() {
         // Ensure JSON is not returned.
         $('#format').val('html');
     });
+
+    // Switch-tree menu
+    function showTreeMenu() {
+        var offset = treeMenu.offset(),
+            treeMenuItems = $('#tree-menu-items'),
+            top = offset.top + treeMenu.outerHeight(false);
+        console.log('Top: ' + top);
+        treeMenuItems.css('top', top);
+        treeMenuItems.show();
+        treeMenu.find('.downer').text('\u25B2');
+        isTreeMenuShowing = true;
+    }
+
+    function hideTreeMenu() {
+        treeMenu.find('.downer').text('\u25BC');
+        $('#tree-menu-items').fadeOut(100);
+        isTreeMenuShowing = false;
+    }
+
+    treeMenu.click(
+        function toggleTreeMenu(event) {
+            (isTreeMenuShowing ? hideTreeMenu : showTreeMenu)();
+            event.stopPropagation();
+        }
+    );
+    $('html').click(hideTreeMenu);
 });

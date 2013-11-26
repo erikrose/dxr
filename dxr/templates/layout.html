@@ -29,19 +29,6 @@
           {% endblock %}
 
           <section class="simple_form_group">
-            {% set showing_tree_menu = trees|length > 1 %} in
-              {% if showing_tree_menu %}
-                <select name="tree" id="tree">
-                  {% for t in trees %}
-                    <option{% if ((t == tree) if tree else loop.first)  %} selected="selected"{% endif %}>{{ t }}</option>
-                  {% endfor %}
-                </select>
-              {% else %}
-                <select name="tree" id="tree" disabled="disabled">
-                  <option value="{{ tree }}">{{ tree }}</option>
-                </select>
-              {% endif %}
-
             <input type="checkbox" name="case_sensitivity" id="case_sensitivity" class="checkbox_case" value="true" />
             <label class="checkbox_label" for="case_sensitivity">Case-sensitive</label>
           </section>
@@ -74,6 +61,12 @@
       </div>
     </div>
     {% endif %}
+
+    <div id="tree-menu">Switch tree<span class="downer">▼</span></div>
+    <div id="tree-menu-items">
+      O hai<br>
+      All ye faithful hosebows
+    </div>
 
     {% block content %}
     <div id="content" class="content" data-no-results="No results returned for current query."></div>
