@@ -33,7 +33,7 @@ DXR Configuration
 -  ``log_folder`` Log folder (default ``<temp_folder>/logs``)
 -  ``wwwroot`` Virtual root on deployment server (default ``/``)
 -  ``enabled_plugins`` Enabled plugins (default ``*``)
--  ``disabled_plugins`` Disabled plugins (default ``''``)
+-  ``disabled_plugins`` Disabled plugins (default ``rust``)
 -  ``directory_index`` Filename for directory index files (default
    ``.dxr-directory-index.html``)
 -  ``generated_date`` In RFC-822 format, also know as (RFC 2822), You
