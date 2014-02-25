@@ -11,6 +11,9 @@ prefix and suffix information while chewing through a pattern and effectively
 merging adjacent subpatterns. This is an implementation of his method.
 
 """
+import sre_parse
+
+
 class TrigramQuery(object):
     """A query which matches a superset of the docs its corresponding regex
     does. Abstract.
@@ -42,28 +45,36 @@ class Or(TrigramQuery):
 
 
 class RegexSummary(object):
-    def __init__(self, can_match_empty, exacts, prefix, suffix, query):
-        """The digested result of analyzing a regex (or sub-regex)
+    """The digested result of analyzing a parsed regex
 
-        :arg can_match_empty: Whether I can match the empty string
-        :arg exacts: Set of exact strings which, unioned, exhaust me. For
-            example (s?printf) would yield {sprintf, printf}.
-        :arg prefixes: The set of prefixes of strings I can match
-        :arg suffixes: The set of suffixes of strings I can match
-        :arg query: An TrigramQuery that must be satisfied by any matching
-            string, in addition to the restrictions expressed by the other
-            attributes
+    :attr can_match_empty: Whether the regex can match the empty string
+    :attr exacts: Set of exact strings which, unioned, exhaust the regex. For
+        example (s?printf) would yield {sprintf, printf}.
+    :attr prefixes: The set of prefixes of strings the regex can match
+    :attr suffixes: The set of suffixes of strings the regex can match
+    :attr query: An TrigramQuery that must be satisfied by any matching
+        string, in addition to the restrictions expressed by the other
+        attributes
 
-        Prefixes, suffixes, and the rest are used only as intermediate values.
-        The point is for them ultimately to become part of the query, which
-        is itself a boolean combination of trigrams.
+    Prefixes, suffixes, and the rest are used only as intermediate values. The
+    point is for them ultimately to become part of the query, which is itself a
+    boolean combination of trigrams.
+
+    """
+    def __init__(self, regex):
+        """Dispatch on the opcode of regex, and descend recursively, analyzing
+        lower nodes and then pulling back up to finally summarize the whole.
+
+        :arg regex: A parsed regex, as returned by ``sre_parse.parse()``
 
         """
         self.can_match_empty = can_match_empty
         self.exacts = exacts
-        self.prefix = prefix
+        self.prefix = prefix  # This can probably be an actual set. The Go impl blows a lot of code removing dupes and such.
         self.suffix = suffix
         self.query = query
+        
+        # NEXT: Start by using this framework to implement the FREE method. I think it'll fit. Test that. Then go full-on GCS.
 
 
 def trigrams(s):
@@ -79,8 +90,6 @@ def summarize_regex(regex):
     :arg regex: A string containing a regex pattern
 
     """
-    # Dispatch on the opcode of regex, and descend recursively, analyzing lower
-    # nodes and then pulling back up.
 
 
 def trigram_query(regex):
@@ -99,3 +108,7 @@ def trigram_query(regex):
     summary.simplify(force=True)
     summary.add_exact()
     return summary.query
+
+
+def ands_and_ors(regex):
+    

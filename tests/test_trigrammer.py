@@ -18,6 +18,7 @@ def test_trigrams():
 #    eq_(trigrams_from_regex('abc'), ['abc'])
 
 # Make sure we don't have have both "ab" and "abc" both as possible prefixes. This is equivalent to just "ab".
+# Make sure we do the right thing when the (?i) flag is set: either generate enough trigrams to cover the case insensitivity, or use a case-folder ES index.
 
 # prefixes: abc | cba
 # suffixes: def
