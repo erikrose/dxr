@@ -11,7 +11,7 @@ prefix and suffix information while chewing through a pattern and effectively
 merging adjacent subpatterns. This is an implementation of his method.
 
 """
-import sre_parse
+from parsimonious import Grammar
 
 
 class TrigramQuery(object):
@@ -110,5 +110,53 @@ def trigram_query(regex):
     return summary.query
 
 
-def ands_and_ors(regex):
-    
+def trigrammify_tree(tree):
+    """Explode the strings in a tree into trigrams. Return a tree whose leaves are trigrams and whose inner nodes are boolean operations. This can then be trivially turned into an ES query."""
+    # Remember that Lucene regexes are always anchored. The caller will have to add a leading .*, etc.
+    # Raise an exception somewhere, maybe in simplify_tree, if there are no trigrams.
+
+
+def simplify_tree(tree):
+    """Do the node reduction to collapse branches of a string tree that aren't
+    useful. Remove strings that aren't long enough to generate any trigrams."""
+
+
+def build_tree(regex):
+    """Turn a parsed regex into a tree of ANDed and ORed literal strings."""
+    op, param = regex
+    if op == 'branch':
+        mystery, alternatives = param
+        return or_(string_tree(alternatives))
+    elif op == 'literal':
+        return param
+
+
+# We should parse a regex. Then go over the tree and turn things like c+ into cc*, perhaps, as it makes it easier to see trigrams to extract.
+# TODO: Parse normal regex syntax, but spit out Lucene-compatible syntax, with " escaped. And all special chars escaped even in character classes, in accordance with https://lucene.apache.org/core/4_6_0/core/org/apache/lucene/util/automaton/RegExp.html?is-external=true.
+# one|two?|three?
+regex_grammar = Grammar(r"""
+    regexp = branch ("|" branch)*
+    branch = piece+
+    piece = quantified / atom
+    quantified = atom quantifier
+    quantifier = "*" / "+" / "?" / repeat
+    repeat = "{" number ("," number?)? "}"
+    number = ~r"\d+"
+
+    # By making each parenthesized subexpr just a "regexp", visit_regexp can
+    # assign group numbers, starting from 0, and the top-level expression
+    # conveniently ends up in the conventional group 0.
+    atom = ("(" regexp ")") / class / "^" / "$" / "." / char
+    class = "[" (inverted_class_start / positive_class_start) initial_class_char class_char* "]"
+    inverted_class_start = "^"
+    positive_class_start = !"^"
+    # An unescaped ] is treated as a literal when the first char of a positive
+    # or inverted character class:
+    initial_class_char = "]" / class_char
+    class_char = backslash_escaped / ~r"[^\]]"
+
+    #~r"\[\]?(?:[^\\\]]*(?:\\\]|\\)*)*\]"  # Grr, still matches []. #~r"\[\]?(?:[^\\\]]*(?:\\\]|\\))*\]"  # We don't need to make actual sense of classes yet.  # TODO: fix
+    char = backslash_escaped / literal_char
+    literal_char = ~"."  # Optimize: make Parsimonious understand "." natively so it doesn't have to fire up the regex engine. TODO: Exclude (^$+*?)[ and ]{} (even though these latter ones are tolerated unescaped by Python's re parser).
+    backslash_escaped = ~r"\\."
+    """)
