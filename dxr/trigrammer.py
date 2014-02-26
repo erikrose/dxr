@@ -137,11 +137,11 @@ def build_tree(regex):
 
 # This recognizes a subset of Python's regex language, minus lookaround
 # assertions, non-greedy quantifiers, and named and other special sorts of
-# groups. Lucene doesn't support those, though it may be possible later to
-# support some via transformation.
+# groups. Lucene doesn't support those, though we might be able to fake it
+# later via some transformation.
 regex_grammar = Grammar(r"""
     regexp = branch another_branch*
-    branch = piece+
+    branch = piece*
     another_branch = "|" branch
     piece = quantified / atom
     quantified = atom quantifier

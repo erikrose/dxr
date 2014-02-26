@@ -22,7 +22,6 @@ def test_trigrams():
 
 # Make sure we don't have have both "ab" and "abc" both as possible prefixes. This is equivalent to just "ab".
 # Make sure we do the right thing when the (?i) flag is set: either generate enough trigrams to cover the case insensitivity, or use a case-folder ES index. I guess we'll use a folded trigram index, like we do now. Be sure to have the query analyzer do the ucasing, because Python is not going to get that right for Unicode.
-# Make sure we can parse (END||STOP) (empty branches).
 # Parse \d, \t, \n, \s, etc. so they don't just come out as "d", etc.: AbBdDsSwWZ afnrtvx.
 # Be sure to escape - if it's the last char in a character class before passing it to ES.
 
@@ -74,3 +73,7 @@ def test_parse_classes():
 def test_parse_regexp():
     regex_grammar.parse('hello+ dolly')
     regex_grammar.parse('hello+|hi')
+    regex_grammar.parse(r'(hello|hi) dolly')
+    regex_grammar.parse(r'(hello|hi|) dolly')
+    regex_grammar.parse(r'(hello||hi) dolly')
+    print regex_grammar.parse(r'|hello|hi')
