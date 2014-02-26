@@ -44,19 +44,29 @@ class RegexParserTests(TestCase):
 def test_parse_classes():
     """Make sure we recognize character classes."""
 
+    class_rule = regex_grammar['class']
+
     def parse_class(pattern):
-        regex_grammar['class'].parse(pattern)
+        class_rule.parse(pattern)
 
     def dont_parse_class(pattern):
         assert_raises(ParseError,
-                      regex_grammar['class'].parse,
+                      class_rule.parse,
                       pattern)
 
+    def assert_matches(pattern, text):
+        eq_(class_rule.match(pattern).text, text)
 
     # These should match all the way to the end:
-    for pattern in ['[]]', '[^]]', '[\d-]', '[a\]]', '[()[\]{}]', '[]()[{}]']:
+    for pattern in ['[]]', '[^]]', r'[\d-]', r'[a\]]', r'[()[\]{}]', '[]()[{}]', '[a-zA-Z0-9]', '[abcde]']:
         yield parse_class, pattern
 
     # These shouldn't match:
-    for pattern in ['[]', '[^]']:
+    for pattern in ['[]', '[^]', '[']:
         yield dont_parse_class, pattern
+
+    # Make sure we don't go too far:
+    for pattern, text in [('[abc]]', '[abc]'),
+                          ('[[0-9]qux', '[[0-9]'),
+                          (r'[^\x\o\]]abc', r'[^\x\o\]]')]:
+        yield assert_matches, pattern, text
