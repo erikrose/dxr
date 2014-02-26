@@ -162,10 +162,17 @@ regex_grammar = Grammar(r"""
     # An unescaped ] is treated as a literal when the first char of a positive
     # or inverted character class:
     initial_class_char = "]" / class_char
-    class_char = backslash_escaped / ~r"[^\]]"
+    class_char = backslash_char / ~r"[^\]]"
 
-    #~r"\[\]?(?:[^\\\]]*(?:\\\]|\\)*)*\]"  # Grr, still matches []. #~r"\[\]?(?:[^\\\]]*(?:\\\]|\\))*\]"
-    char = backslash_escaped / literal_char
-    literal_char = ~r"[^^$?*+()[\]{}|.\\]"  # TODO: Exclude (^$+*?)[ and ]{} (even though these latter ones are tolerated unescaped by Python's re parser).
-    backslash_escaped = ~r"\\."
+    char = backslash_char / literal_char
+    backslash_char = "\\" backslash_operand
+    backslash_operand = backslash_special / backslash_hex / backslash_normal
+    # We require escaping ]{} even though these are tolerated unescaped by
+    # Python's re parser:
+    literal_char = ~r"[^^$?*+()[\]{}|.\\]"
+    # Char class abbreviations and untypeable chars:
+    backslash_special = ~r"[AbBdDsSwWZabefnrtv]"
+    backslash_hex = ~r"x[0-9a-fA-F]{2}"
+    # Normal char with no special meaning:
+    backslash_normal = ~"."
     """)
