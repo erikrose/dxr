@@ -134,9 +134,15 @@ def build_tree(regex):
 # We should parse a regex. Then go over the tree and turn things like c+ into cc*, perhaps, as it makes it easier to see trigrams to extract.
 # TODO: Parse normal regex syntax, but spit out Lucene-compatible syntax, with " escaped. And all special chars escaped even in character classes, in accordance with https://lucene.apache.org/core/4_6_0/core/org/apache/lucene/util/automaton/RegExp.html?is-external=true.
 # one|two?|three?
+
+# This recognizes a subset of Python's regex language, minus lookaround
+# assertions, non-greedy quantifiers, and named and other special sorts of
+# groups. Lucene doesn't support those, though it may be possible later to
+# support some via transformation.
 regex_grammar = Grammar(r"""
-    regexp = branch ("|" branch)*
+    regexp = branch another_branch*
     branch = piece+
+    another_branch = "|" branch
     piece = quantified / atom
     quantified = atom quantifier
     quantifier = "*" / "+" / "?" / repeat
@@ -146,7 +152,10 @@ regex_grammar = Grammar(r"""
     # By making each parenthesized subexpr just a "regexp", visit_regexp can
     # assign group numbers, starting from 0, and the top-level expression
     # conveniently ends up in the conventional group 0.
-    atom = ("(" regexp ")") / class / "^" / "$" / "." / char
+    atom = ("(" regexp ")") / class / "^" / "$" / "." / char  # Optimize: vacuum up any harmless sequence of chars in one regex, first: [^()[\]^$.?*+{}]+
+
+    # Character classes are pretty complex little beasts, even though we're
+    # just scanning right over them rather than trying to pull any info out:
     class = "[" (inverted_class_start / positive_class_start) initial_class_char class_char* "]"
     inverted_class_start = "^"
     positive_class_start = !"^"
@@ -155,8 +164,8 @@ regex_grammar = Grammar(r"""
     initial_class_char = "]" / class_char
     class_char = backslash_escaped / ~r"[^\]]"
 
-    #~r"\[\]?(?:[^\\\]]*(?:\\\]|\\)*)*\]"  # Grr, still matches []. #~r"\[\]?(?:[^\\\]]*(?:\\\]|\\))*\]"  # We don't need to make actual sense of classes yet.  # TODO: fix
+    #~r"\[\]?(?:[^\\\]]*(?:\\\]|\\)*)*\]"  # Grr, still matches []. #~r"\[\]?(?:[^\\\]]*(?:\\\]|\\))*\]"
     char = backslash_escaped / literal_char
-    literal_char = ~"."  # Optimize: make Parsimonious understand "." natively so it doesn't have to fire up the regex engine. TODO: Exclude (^$+*?)[ and ]{} (even though these latter ones are tolerated unescaped by Python's re parser).
+    literal_char = ~r"[^^$?*+()[\]{}|.\\]"  # TODO: Exclude (^$+*?)[ and ]{} (even though these latter ones are tolerated unescaped by Python's re parser).
     backslash_escaped = ~r"\\."
     """)

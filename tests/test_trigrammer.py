@@ -24,8 +24,7 @@ def test_trigrams():
 # Make sure we do the right thing when the (?i) flag is set: either generate enough trigrams to cover the case insensitivity, or use a case-folder ES index. I guess we'll use a folded trigram index, like we do now. Be sure to have the query analyzer do the ucasing, because Python is not going to get that right for Unicode.
 # Make sure we can parse (END||STOP) (empty branches).
 # Parse \d, \t, \n, \s, etc. so they don't just come out as "d", etc.: AbBdDsSwWZ afnrtvx.
-# class tests: []] [^]] [\d-] [a\]] [()[\]{}] []()[{}]
-#  [] [^] should not be a valid class.
+# Be sure to escape - if it's the last char in a character class before passing it to ES.
 
 # prefixes: abc | cba
 # suffixes: def
@@ -68,5 +67,10 @@ def test_parse_classes():
     # Make sure we don't go too far:
     for pattern, text in [('[abc]]', '[abc]'),
                           ('[[0-9]qux', '[[0-9]'),
-                          (r'[^\x\o\]]abc', r'[^\x\o\]]')]:
+                          (r'[^\a\f\]]abc', r'[^\a\f\]]')]:
         yield assert_matches, pattern, text
+
+
+def test_parse_regexp():
+    regex_grammar.parse('hello+ dolly')
+    regex_grammar.parse('hello+|hi')
