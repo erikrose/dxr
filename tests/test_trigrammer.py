@@ -6,7 +6,7 @@ from unittest import TestCase
 from nose.tools import eq_, assert_raises
 from parsimonious.exceptions import ParseError
 
-from dxr.trigrammer import trigrams, regex_grammar
+from dxr.trigrammer import trigrams, regex_grammar, TrigramTreeVisitor, And, Or
 
 
 def test_trigrams():
@@ -36,8 +36,54 @@ def test_trigrams():
 # exact: Ø
 
 
-class RegexParserTests(TestCase):
-    """Tests for our custom regex parser"""
+def visit_regex(regex):
+    return TrigramTreeVisitor().visit(regex_grammar.parse(regex))
+
+
+class StringExtractionTests(TestCase):
+    """Tests for our ability to extract static strings from regexes
+
+    This covers the TrigramTreeVisitor and the StringTreeNodes.
+
+    """
+    def test_merge_literals(self):
+        """Make sure we know how to merge adjacent char literals."""
+        eq_(visit_regex('abcd'), Or([And(['abcd'])]))
+
+    def test_2_branches(self):
+        eq_(visit_regex('ab|cd'), Or([And(['ab']), And(['cd'])]))
+
+    def test_3_branches(self):
+        eq_(visit_regex('ab|cd|ef'),
+            Or([And(['ab']), And(['cd']), And(['ef'])]))
+
+    def test_anded_uselesses(self):
+        """Make USELESSes break up contiguous strings of literals."""
+        eq_(visit_regex('ab[^q]cd'),
+            Or([And(['ab', 'cd'])]))
+
+    def test_empty_branch(self):
+        """Make sure the right kind of tree is built when a branch is empty."""
+        eq_(visit_regex('(a||b)'),
+            Or([And([Or([And(['a']), And(['']), And(['b'])])])]))
+
+    def test_nested_tree(self):
+        """Make sure Ors containing Ands build properly."""
+        eq_(visit_regex('ab[^q](cd|ef)'),
+            Or([And(['ab', Or([And(['cd']), And(['ef'])])])]))
+        eq_(visit_regex('ab(cd|ef)'),
+            Or([And(['ab', Or([And(['cd']), And(['ef'])])])]))
+
+    def test_and_containing_ors(self):
+        """Does this explode? Right now, visit_branch assumes that Ands receive only strings or USELESS."""
+        eq_(visit_regex('(a|b)(c|d)'),
+            Or([And([Or([And(['a']), And(['b'])]), Or([And(['c']), And(['d'])])])]))
+
+    def test_wtf(self):
+        """Guard against an ill-defined WTF we had."""
+        eq_(visit_regex('(aa|b)(c|d)'),
+            Or([And([Or([And(['aa']), And(['b'])]), Or([And(['c']), And(['d'])])])]))
+
 
 def test_parse_classes():
     """Make sure we recognize character classes."""
@@ -77,4 +123,4 @@ def test_parse_regexp():
     regex_grammar.parse(r'(hello|hi|) dolly')
     regex_grammar.parse(r'(hello||hi) dolly')
     regex_grammar.parse(r'|hello|hi')
-    print regex_grammar.parse(r'about \d{2}')
+    regex_grammar.parse(ur'aböut \d{2}')
