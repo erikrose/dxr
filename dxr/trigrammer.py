@@ -209,6 +209,20 @@ class StringTreeNode(list):
         return (self.__class__ is other.__class__ and
                 super(StringTreeNode, self).__eq__(other))
 
+    def simplified():
+        """Return a simpler but equivalent tree structure.
+
+        Simplify by collapsing nodes with only 1 child.
+
+        """
+        simple_children = ifilter(None, (n.simplified() for n in self))
+        if len(self) > 1:
+            return self.__class__(simple_children)
+        elif len(self) == 1:
+            raise NotiMplementedError
+        else:  # Empty nodes occur at empty regex branches.
+            return
+
 
 class Useless(StringTreeNode):
     """This doubles as the singleton USELESS and a "ruined" Or, to which adding
