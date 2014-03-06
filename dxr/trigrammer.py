@@ -215,6 +215,16 @@ class StringTreeNode(list):
         Simplify by collapsing nodes with only 1 child.
 
         """
+        # NEXT: Probably finish this. We'll need it in any case, and it makes
+        # tests shorter to write. But also think about implementing the Cox
+        # method. I now see that I'm going to have to write some kind of
+        # theorems into even the FREE method if I want to be able to extract
+        # trigrams from ab[cd] (prefixes, cross products), so I might as well
+        # use Cox's. We can code his theorems right into the visitor. I don't
+        # think it will get too messy. Low-level nodes' visitation will just
+        # cast strings to ints, etc., and high-level ones will just apply Cox
+        # theorems.
+        # Btw, http://code.ohloh.net/file?fid=rfNSbmGXJxqJhWDMLp3VaEMUlgQ&cid=eDOmLT58hyw&s=&fp=305491&mp=&projSelected=true#L0 is PG's explanation of their simplification stuff.
         simple_children = ifilter(None, (n.simplified() for n in self))
         if len(self) > 1:
             return self.__class__(simple_children)
