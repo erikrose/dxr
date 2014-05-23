@@ -552,7 +552,7 @@ public:
       VarDecl *def = vd->getDefinition();
       if (!def) {
 #if CLANG_AT_LEAST(3, 4)
-        VarDecl *first = vd->getFirstDeclaration();
+        VarDecl *first = vd->getFirstDecl();
 #else
         VarDecl *first = vd->getFirstDeclaration();
 #endif
