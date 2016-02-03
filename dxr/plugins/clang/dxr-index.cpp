@@ -1307,9 +1307,9 @@ protected:
     tmpdir += "/";
     IndexConsumer::setTmpDir(tmpdir);
 
-    free(abs_src);
-    free(abs_output);
-    free(abs_tmpdir);
+    // We plonk those 3 allocated strings into their static vars and then never
+    // free them. TODO: Freeing them from the IndexConsumer's destructor might
+    // be nice in the future.
 
     return true;
   }
