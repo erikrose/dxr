@@ -7,8 +7,6 @@ reason to keep this IR.]
 """
 import csv
 from functools import partial
-from glob import glob
-from hashlib import sha1
 from itertools import chain, izip
 from os.path import join
 
@@ -17,10 +15,6 @@ from funcy import decorator, identity, select_keys, imap, ifilter, remove
 from dxr.indexers import FuncSig, Position, Extent
 from dxr.utils import frozendict
 
-import re
-from os import listdir
-from os.path import isfile, join
-from collections import defaultdict
 
 class UselessLine(Exception):
     """A CSV line isn't suitable for getting anything useful out of."""
@@ -269,13 +263,13 @@ def condense(lines, dispatch_table, predicate=lambda kind, fields: True):
     return ret
 
 
-def lines_from_csvs(folder, file_glob):
-    """Return an iterable of lines from all CSVs matching a glob.
+def lines_from_csvs(folder, csv_names):
+    """Return an iterable of lines from the union of many CSV files.
 
     All lines are lists of strings.
 
     :arg folder: The folder in which to look for CSVs
-    :arg file_glob: A glob matching one or more CSVs in the folder
+    :arg csv_names: The names of the *.csv files within the folder
 
     """
     def lines_from_csv(path):
@@ -284,39 +278,12 @@ def lines_from_csvs(folder, file_glob):
             for line in csv.reader(file):
                 yield line
 
-    # This globbing is stupid but actually not that slow: a few tenths of a
-    # second on a dir of 97K files in VirtualBox. That said, it does add up.
-    paths = glob(join(folder, file_glob))
-
-    return chain.from_iterable(lines_from_csv(p) for p in paths)
+    return chain.from_iterable(lines_from_csv(join(folder, '%s.csv' % name))
+                               for name in csv_names)
 
 
-def lines_from_csvs_with_path_digest(folder, csvdict, path_digest):
-    """Return an iterable of lines from all CSVs that 
-       start with the specified file path digest.
-
-    All lines are lists of strings.
-
-    :arg folder: The folder in which to look for CSVs
-    :arg csvdict: A dict of sha1 hex digest keys
-    :arg path_digest: A string produced by sha1(file_path).hexdigest()
-
-    """
-    def lines_from_csv(path):
-        with open(path, 'rb') as file:
-            # Loop internally so we don't prematurely close the file:
-            for line in csv.reader(file):
-                yield line
-
-    # List of paths for this path_digest, obtained from dict 'db'
-    paths = []
-    for f in csvdict[path_digest]:
-        paths.append(join(folder, f))
-
-    return chain.from_iterable(lines_from_csv(p) for p in paths)
-
-
-def condense_file(csv_folder, file_path, overrides, overriddens, parents, children, csvdict):
+def condense_file(csv_folder, file_path, overrides, overriddens, parents,
+                  children, csv_names):
     """Return a dict representing an analysis of one source file.
 
     This is phase 2: the file-at-a-time phase.
@@ -336,7 +303,8 @@ def condense_file(csv_folder, file_path, overrides, overriddens, parents, childr
         parents
     :arg children: A dict whose keys are class or struct qualnames that have
         children
-    :arg csvdict: A dict whose keys are sha1 digests of file paths
+    :arg csv_names: An iterable of names of CSV files within ``csv_folder`` to
+        process, minus their ".csv" extensions
 
     """
     process_maybe_function_for_override = partial(process_maybe_function,
@@ -348,15 +316,18 @@ def condense_file(csv_folder, file_path, overrides, overriddens, parents, childr
                       'ref': process_maybe_function_for_override,
                       'decldef': process_maybe_function_for_override,
                       'type': partial(process_maybe_impl, parents, children)}
-    return condense(lines_from_csvs_with_path_digest(csv_folder, csvdict, sha1(file_path).hexdigest()),
+    return condense(lines_from_csvs(csv_folder, csv_names),
                     dispatch_table)
 
 
-def condense_global(csv_folder):
+def condense_global(csv_folder, csv_names):
     """Perform the whole-program data gathering necessary to emit "overridden"
     and subclass-related needles.
 
     This is phase 1: the whole-program phase.
+
+    :arg csv_names: An iterable of the names of CSV files (minus their
+        extensions) in ``csv_folder``
 
     """
     def listify_keys(d):
@@ -371,20 +342,11 @@ def condense_global(csv_folder):
     parents = {}
     children = {}
 
-    # create a list of csvfiles then populate dict 'db' with a list of csv's for each filepath digest
-    csvfiles = None
-    db = defaultdict(list)
-    csvtest = re.compile(".*\.csv$")
-    csvfiles = [f for f in listdir(csv_folder) if csvtest.match(join(csv_folder, f))]
-    for file in csvfiles:
-        seg = file.split(".")
-        db[seg[0]].append(file)
-
     # Load from all the CSVs only the impl lines and {function lines
     # containing overriddenname}. Ignore the direct return value and collect
     # what we want via the partials.
     condense(
-        lines_from_csvs(csv_folder, '*.csv'),
+        lines_from_csvs(csv_folder, csv_names),
         {'impl': partial(process_impl, parents, children),
          'func_override': partial(process_override, overrides, overriddens)},
         predicate=lambda kind, fields: (kind == 'func_override' or
@@ -395,4 +357,4 @@ def condense_global(csv_folder):
     for x in [overrides, overriddens, parents, children]:
         listify_keys(x)
 
-    return overrides, overriddens, parents, children, db
+    return overrides, overriddens, parents, children
